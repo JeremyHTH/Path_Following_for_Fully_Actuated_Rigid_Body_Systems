@@ -56,7 +56,7 @@ class Path_Generation_Tool:
 
         if self.Is_loop:
             if not np.allclose(quat_key[0], quat_key[-1]):
-                print("[info] Closing quaternion loop: appending first quaternion to end")
+                print("[Info] Closing quaternion loop: appending first quaternion to end")
                 quat_key = np.vstack([quat_key, quat_key[0]])
 
                 if not np.isclose(lam_key[-1], 1.0):
@@ -112,7 +112,7 @@ class Path_Generation_Tool:
         rot_loop = self.Is_loop and not np.allclose(self.rotation_matrices[0], self.rotation_matrices[-1])
 
         if pos_loop or rot_loop:
-            print("[info] Closing loop by appending first element to end")
+            print("[Info] Closing loop by appending first element to end")
 
             self.rotation_matrices = np.concatenate([self.rotation_matrices, self.rotation_matrices[None, 0]], axis=0)
             self.points = np.vstack([self.points, self.points[0]])
@@ -181,10 +181,10 @@ class Path_Generation_Tool:
         x_key, y_key, z_key = self.points.T  # waypoints
 
         for comp, key_pts, ax_ in zip([x, y, z], [x_key, y_key, z_key], axs3):
-          ax_.plot(Lambda_vals, key_pts, "o", label="Way-points")
-          ax_.plot(Lambda_samp, comp, "-", label="C³ spline")
-          ax_.grid(True)
-          ax_.legend()
+            ax_.plot(Lambda_vals, key_pts, "o", label="Way-points")
+            ax_.plot(Lambda_samp, comp, "-", label="C³ spline")
+            ax_.grid(True)
+            ax_.legend()
 
         for label, ax_ in zip(xyz_labels, axs3):
             ax_.set_ylabel(label)
