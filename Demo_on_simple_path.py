@@ -113,6 +113,8 @@ END_EFFECTOR_TRANSFORMATION=np.eye(4)
 
 KukaIiwa14 = Robot(NUMBER_OF_JOINT, ALPHA, A, D, OFFSET, MASS, COM, INERTIA, FV, FS, GRAVITY, End_effector_transformation= END_EFFECTOR_TRANSFORMATION, convention="MDH", joint_types=["R"]*7)
 
+KukaIiwa14_Control_Module = Control_Module()
+
 # Simulation parameters
 dt = 0.005
 T_total = 20
@@ -396,6 +398,10 @@ for step in tqdm(range(steps), desc="Simulating", unit="step"):
 
     u = np.linalg.inv(J_H) @ (-J_H_dot @ qd + v)
     u = np.clip(u, -30, 30)
+
+    u_module, _ = KukaIiwa14_Control_Module.Get_Control_Input(KukaIiwa14, Frame, q, qd, qdd, Reference_signal(Frame, time))
+    u_module = np.clip(u_module, -30, 30)
+    print("Difference in control input norm:", np.linalg.norm(u - u_module))
 
     if (time in {4.995, 5.000, 5.005}):
         print("Debug")
