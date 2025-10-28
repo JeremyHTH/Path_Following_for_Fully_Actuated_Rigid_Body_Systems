@@ -20,7 +20,6 @@ r = 0.5
 h = 0.3
 
 Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h ] for i in range(N)]
-# Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h * np.cos(2 * np.pi * 2/ N * i + np.pi/3)] for i in range(N)]
 
 Rotation_List = []
 ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3) 
@@ -43,22 +42,18 @@ for i in range (N):
         [-sp_sin,             cp*sr,             cp*cr       ]
     ]))
 
-# Tools = Path_Generation_Tool(Point_List, Rotation_List, True, 4, False)
-# Tools.Visualize_Path(L=0.25, num_of_roation_plots=20)
-
 Frame = Frame_Path(Point_List, Rotation_List, True, 4, False)
 
-# Frame.Visualize_Path(L=0.25, num_of_roation_plots=20)
+Frame.Visualize_path(L= 0.1, num_of_roation_plots=20, Show_plots=False)
 
-Frame.visualize_frame(L = 0.25, num_of_frame_plots=20)
-exit()
+Frame.Visualize_frame(L = 0.1, num_of_frame_plots=20, Show_plots=False)
 
 query_pts = []
 
 for i in range (20):
     query_pts.append([np.cos(2 * np.pi * i / 20), np.sin(2 * np.pi * i / 20), 0.25])
 
-# Frame.visualize_closest_point(query_pts)
+Frame.Visualize_closest_point(query_pts)
 
 
 Number_of_joint = 7

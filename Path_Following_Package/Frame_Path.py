@@ -24,7 +24,7 @@ class Frame_Path(Path_Generation_Tool):
 
 
     def _build_arc_length_map(self, N: int):
-        lam = np.linspace(0.0, 1.0, N)
+        lam = np.linspace(0.0, 1.0, N, endpoint=not self.Is_loop)
         P = super().P(lam)
         seglen = np.linalg.norm(np.diff(P, axis=0), axis=1)
         s = np.concatenate(([0.0], np.cumsum(seglen)))
@@ -37,7 +37,8 @@ class Frame_Path(Path_Generation_Tool):
         if self.Is_loop:
             return (s + self.total_length) % self.total_length
         else:
-            return np.clip(s, 0, self.total_length)
+            return s
+            # return np.clip(s, 0, self.total_length)
 
     def P(self, s):
         s = self.Ensure_in_range(s)
@@ -58,7 +59,7 @@ class Frame_Path(Path_Generation_Tool):
             raise Exception("Frame method not found")
 
     def _make_parallel_transport_frame(self):
-        s = np.linspace(0, self.total_length, 20000)
+        s = np.linspace(0, self.total_length, 20000, endpoint=not self.Is_loop)
 
 
         T = self._dP_ds(s, 1)
@@ -141,7 +142,7 @@ class Frame_Path(Path_Generation_Tool):
         new_shape = s_arr.shape + (3,)
         return T.reshape(new_shape), M1.reshape(new_shape), M2.reshape(new_shape)
 
-    def visualize_frame(self, L = 1, num_of_frame_plots = 10):
+    def Visualize_frame(self, L = 1, num_of_frame_plots = 10, Show_plots = True):
         
         s = np.linspace(0.0,self.total_length, 400, endpoint=not self.Is_loop)
         pos_s = self.P(s)
@@ -182,7 +183,8 @@ class Frame_Path(Path_Generation_Tool):
         ax.set_zlabel("z")
         ax.set_title(f"{self.frame_method} frame (intrinsic unit-speed)")
 
-        plt.show()
+        if (Show_plots):
+            plt.show()
     
     def num_derivative(self, func, x, h=1e-6):
         return (func(x + h) - func(x - h)) / (2.0 * h)
@@ -224,14 +226,14 @@ class Frame_Path(Path_Generation_Tool):
             best_s = np.fmod((best_s - s_bound[0]), (s_bound[1] - s_bound[0])) + s_bound[0]
 
         else: 
-            best_s = np.clip(best_s, s_bound[0], s_bound[1]) 
+            best_s = np.clip(best_s, s_bound[0] - self.total_length * 0.1, s_bound[1] + self.total_length * 0.1) 
 
-        if (best_s < 0):
-            raise Exception(f"negative s {best_s_before}{best_s}, {s_bound[0]} {s_bound[1]}")
+        # if (best_s < 0):
+        #     raise Exception(f"negative s {best_s_before}{best_s}, {s_bound[0]} {s_bound[1]}")
 
         return best_s, self.P(best_s)
     
-    def visualize_closest_point(self, query_pts = [[0, 0, 0]]):
+    def Visualize_closest_point(self, query_pts = [[0, 0, 0]], Show_plots = True):
 
         s = np.linspace(0.0,self.total_length, 400, endpoint=not self.Is_loop)
         pos_s = self.P(s)
@@ -257,4 +259,5 @@ class Frame_Path(Path_Generation_Tool):
         ax.scatter([], [], color='blue', label='Closest point p(s*)')
         ax.legend()
         plt.tight_layout()
-        plt.show()
+        if (Show_plots):
+            plt.show()

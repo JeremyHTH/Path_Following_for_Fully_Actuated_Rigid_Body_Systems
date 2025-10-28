@@ -6,16 +6,16 @@ from scipy.spatial.transform import Rotation as R
 from importlib.util import spec_from_file_location, module_from_spec
 
 
-
 from scipy.linalg import logm
 
 import os
 
 
 from Path_Following_Package import *
+from scipy.interpolate import make_interp_spline
 
 SAVE_DIR = "Demo_Image"
-PREFIX_NAME = "Simple_path_2_"
+PREFIX_NAME = "Simple_path_2_false_"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 def savefig(name):
@@ -23,49 +23,1053 @@ def savefig(name):
 
 # Path generation
 N = 5000
+PATH_INDEX = 6
 
-r = 0.5
-h = 0.3
+# Circular path
+if (PATH_INDEX == 1):
+    r = 0.5
+    h = 0.3
 
-Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h * np.cos(2 * np.pi / N * i ) ] for i in range(N)]
-# Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h] for i in range(N)]
+    Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h * np.cos(2 * np.pi / N * i ) ] for i in range(N)]
+    # Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h] for i in range(N)]
 
-Rotation_List = []
-ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3) 
+    Rotation_List = []
+    ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3) 
 
-# while (np.abs(ry) < 1.5 and np.abs(rp) < 1.5 and np.abs(rr) < 1.5):
-#     ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3) 
+    # while (np.abs(ry) < 1.5 and np.abs(rp) < 1.5 and np.abs(rr) < 1.5):
+    #     ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3) 
 
-for i in range (N):
-    yaw   =  2 * np.pi * i / N + np.pi/ 3 # ry * np.sin(2*np.pi * i / N) # 2 * np.pi * i / N # ry*np.sin(2*np.pi * i / N)
-    pitch = rp # rp*np.sin(2*np.pi * i / N) # 2 * np.pi * i / N  + np.pi/2 # rp*np.sin(2*np.pi * i / N)
-    roll  =  rr # rr*np.sin(2*np.pi * i / N) # 2 * np.pi * i / N  # 2 * np.pi * i / N  + np.pi/3 # rr*np.sin(2*np.pi * i / N)
+    for i in range (N):
+        yaw   =  2 * np.pi * i / N + np.pi/ 3 # ry * np.sin(2*np.pi * i / N) # 2 * np.pi * i / N # ry*np.sin(2*np.pi * i / N)
+        pitch = rp # rp*np.sin(2*np.pi * i / N) # 2 * np.pi * i / N  + np.pi/2 # rp*np.sin(2*np.pi * i / N)
+        roll  =  rr # rr*np.sin(2*np.pi * i / N) # 2 * np.pi * i / N  # 2 * np.pi * i / N  + np.pi/3 # rr*np.sin(2*np.pi * i / N)
 
-    cy, sy = np.cos(yaw),   np.sin(yaw)
-    cp, sp_sin = np.cos(pitch), np.sin(pitch)  # avoid name clash
-    cr, sr = np.cos(roll),  np.sin(roll)
+        cy, sy = np.cos(yaw),   np.sin(yaw)
+        cp, sp_sin = np.cos(pitch), np.sin(pitch)  # avoid name clash
+        cr, sr = np.cos(roll),  np.sin(roll)
 
-    Rotation_List.append(np.array([
-        [cy*cp,  cy*sp_sin*sr - sy*cr,  cy*sp_sin*cr + sy*sr],
-        [sy*cp,  sy*sp_sin*sr + cy*cr,  sy*sp_sin*cr - cy*sr],
-        [-sp_sin,             cp*sr,             cp*cr       ]
-    ]))
+        Rotation_List.append(np.array([
+            [cy*cp,  cy*sp_sin*sr - sy*cr,  cy*sp_sin*cr + sy*sr],
+            [sy*cp,  sy*sp_sin*sr + cy*cr,  sy*sp_sin*cr - cy*sr],
+            [-sp_sin,             cp*sr,             cp*cr       ]
+        ]))
 
-Frame = Frame_Path(Point_List, Rotation_List, True, 4, False)
+    Frame = Frame_Path(Point_List, Rotation_List, True, 4)
+
+# Linear path
+elif (PATH_INDEX == 2):
+    Point_List = [[0.1 + 0.3 * i / N, 0.1 + 0.3 * i / N, 0.25 + 0.1 * (i / N)] for i in range(N)]
+    # Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h] for i in range(N)]
+
+    Rotation_List = []
+    ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3)
+
+    # while (np.abs(ry) < 1.5 and np.abs(rp) < 1.5 and np.abs(rr) < 1.5):
+    #     ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3)
+
+    for i in range (N):
+        yaw   =  0 # ry # ry*np.sin(2*np.pi * i / N)# ry * np.sin(2*np.pi * i / N) # 2 * np.pi * i / N # ry*np.sin(2*np.pi * i / N)
+        pitch = 0 # rp # rp*np.sin(2*np.pi * i / N) # rp*np.sin(2*np.pi * i / N) # 2 * np.pi * i / N  + np.pi/2 # rp*np.sin(2*np.pi * i / N)
+        roll  =  0 # rr # rr*np.sin(2*np.pi * i / N) # rr*np.sin(2*np.pi * i / N) # 2 * np.pi * i / N  # 2 * np.pi * i / N  + np.pi/3 # rr*np.sin(2*np.pi * i / N)
+
+        cy, sy = np.cos(yaw),   np.sin(yaw)
+        cp, sp_sin = np.cos(pitch), np.sin(pitch)  # avoid name clash
+        cr, sr = np.cos(roll),  np.sin(roll)
+
+        Rotation_List.append(np.array([
+            [cy*cp,  cy*sp_sin*sr - sy*cr,  cy*sp_sin*cr + sy*sr],
+            [sy*cp,  sy*sp_sin*sr + cy*cr,  sy*sp_sin*cr - cy*sr],
+            [-sp_sin,             cp*sr,             cp*cr       ]
+        ]))
+
+    Dense_points = np.array(Point_List)
+    Dense_rotations = np.array(Rotation_List)
+    stride = max(1, N // 30)
+    Point_List = Dense_points[::stride]
+    Rotation_List = Dense_rotations[::stride]
+
+    # if not np.allclose(Point_List[-1], Dense_points[-1]):
+    #     Point_List = np.vstack([Point_List, Dense_points[-1]])
+    #     Rotation_List = np.concatenate([Rotation_List, Dense_rotations[-1:]], axis=0)
+
+    Frame = Frame_Path(Point_List, Rotation_List, False, 4)
+
+# Circular path non looping
+elif (PATH_INDEX == 3):
+    N = 30
+
+    # Point_List = [[0.5 * np.cos(2 * np.pi / N * i), 0.5 * np.sin(2 * np.pi  / N * i), 0.3 * np.cos(2 * np.pi * 2/ N * i + np.pi/3)] for i in range(N)]
+    Point_List = [[0.5 * np.cos(2 * np.pi / N * i), 0.5 * np.sin(2 * np.pi  / N * i), 0.3] for i in range(N)]
+    # Point_List = [[0.25 * np.cos(2 * np.pi / N * i) + 0.3 , 0.25 * np.sin(2 * np.pi  / N * i) + 0.3, 0.3 ] for i in range(N)]
+    # Point_List = [[0.1 + 0.3 * i / N, 0.1 + 0.3 * i / N, 0.25 + 0.1 * (i / N)] for i in range(N)]
+
+
+    # rx, ry, rz = np.random.rand(3) * np.pi
+    rx, ry, rz = np.ones(3) * np.pi
+    # Rotation_List = [R.from_euler('xyz', [rx * np.sin(2 * np.pi * i/N), ry * np.cos(2 * np.pi * i/N), rz * np.sin(2 * np.pi * i/N)]).as_matrix().reshape((3,3)) for i in range(N)]
+
+    # Rotation_List = [R.from_euler('xyz', [0, 0, rz * np.sin(2 * np.pi * i/N)]).as_matrix().reshape((3,3)) for i in range(N)]
+
+    Rotation_List = []
+    ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3)
+
+    # while (np.abs(ry) < 1.5 and np.abs(rp) < 1.5 and np.abs(rr) < 1.5):
+    #     ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3)
+
+    # ry, rp, rr = np.random.uniform(-np.pi / 2, np.pi / 2, 3) # np.random.rand(3)
+
+    # while (np.abs(ry) < 1 and np.abs(rp) < 1 and np.abs(rr) < 1):
+    #     ry, rp, rr = np.random.uniform(-np.pi / 2, np.pi / 2, 3)
+
+    # ry, rp, rr = np.random.uniform(-1, 1, 3) # np.random.rand(3)
+
+    print("1", ry, rp, rr)
+
+    yaw_c, pitch_c, roll_c = np.random.uniform(-1, 1, 3)
+    # yaw_c, pitch_c, roll_c = np.random.uniform(-np.pi/2, np.pi/2, 3)
+    for i in range (N):
+        yaw   =  0 #  ry * np.sin(2*np.pi * i / N) #  2 * np.pi * i / N + np.pi #  ry * np.sin(2*np.pi * i / N) # 2 * np.pi * i / N # ry*np.sin(2*np.pi * i / N)
+        pitch = 0 # rp # rp*np.sin(2*np.pi * i / N) # 2 * np.pi * i / N  + np.pi/2 # rp*np.sin(2*np.pi * i / N)
+        roll  =  0 # rr #  rr*np.sin(2*np.pi * i / N) # 2 * np.pi * i / N  # 2 * np.pi * i / N  + np.pi/3 # rr*np.sin(2*np.pi * i / N)
+
+        cy, sy = np.cos(yaw),   np.sin(yaw)
+        cp, sp_sin = np.cos(pitch), np.sin(pitch)  # avoid name clash
+        cr, sr = np.cos(roll),  np.sin(roll)
+
+        Rotation_List.append(np.array([
+            [cy*cp,  cy*sp_sin*sr - sy*cr,  cy*sp_sin*cr + sy*sr],
+            [sy*cp,  sy*sp_sin*sr + cy*cr,  sy*sp_sin*cr - cy*sr],
+            [-sp_sin,             cp*sr,             cp*cr       ]
+        ]))
+
+    Frame = Frame_Path(Point_List, Rotation_List, False, 4)
+
+elif (PATH_INDEX == 4):
+    
+    STRAIGHT_LINE_PATH = {
+        "points": [
+            [
+                0.1,
+                0.1,
+                0.25
+            ],
+            [
+                0.11034482758620691,
+                0.11034482758620691,
+                0.253448275862069
+            ],
+            [
+                0.1206896551724138,
+                0.1206896551724138,
+                0.25689655172413794
+            ],
+            [
+                0.1310344827586207,
+                0.1310344827586207,
+                0.2603448275862069
+            ],
+            [
+                0.1413793103448276,
+                0.1413793103448276,
+                0.26379310344827583
+            ],
+            [
+                0.1517241379310345,
+                0.1517241379310345,
+                0.2672413793103448
+            ],
+            [
+                0.1620689655172414,
+                0.1620689655172414,
+                0.2706896551724138
+            ],
+            [
+                0.1724137931034483,
+                0.1724137931034483,
+                0.27413793103448275
+            ],
+            [
+                0.1827586206896552,
+                0.1827586206896552,
+                0.2775862068965517
+            ],
+            [
+                0.1931034482758621,
+                0.1931034482758621,
+                0.2810344827586207
+            ],
+            [
+                0.20344827586206898,
+                0.20344827586206898,
+                0.28448275862068967
+            ],
+            [
+                0.2137931034482759,
+                0.2137931034482759,
+                0.2879310344827586
+            ],
+            [
+                0.2241379310344828,
+                0.2241379310344828,
+                0.29137931034482756
+            ],
+            [
+                0.23448275862068968,
+                0.23448275862068968,
+                0.29482758620689653
+            ],
+            [
+                0.24482758620689657,
+                0.24482758620689657,
+                0.2982758620689655
+            ],
+            [
+                0.2551724137931035,
+                0.2551724137931035,
+                0.3017241379310345
+            ],
+            [
+                0.2655172413793104,
+                0.2655172413793104,
+                0.30517241379310345
+            ],
+            [
+                0.27586206896551724,
+                0.27586206896551724,
+                0.3086206896551724
+            ],
+            [
+                0.28620689655172415,
+                0.28620689655172415,
+                0.3120689655172414
+            ],
+            [
+                0.29655172413793107,
+                0.29655172413793107,
+                0.3155172413793103
+            ],
+            [
+                0.306896551724138,
+                0.306896551724138,
+                0.3189655172413793
+            ],
+            [
+                0.3172413793103449,
+                0.3172413793103449,
+                0.32241379310344825
+            ],
+            [
+                0.32758620689655177,
+                0.32758620689655177,
+                0.3258620689655172
+            ],
+            [
+                0.33793103448275863,
+                0.33793103448275863,
+                0.3293103448275862
+            ],
+            [
+                0.34827586206896555,
+                0.34827586206896555,
+                0.3327586206896551
+            ],
+            [
+                0.35862068965517246,
+                0.35862068965517246,
+                0.3362068965517241
+            ],
+            [
+                0.3689655172413794,
+                0.3689655172413794,
+                0.33965517241379306
+            ],
+            [
+                0.3793103448275863,
+                0.3793103448275863,
+                0.34310344827586203
+            ],
+            [
+                0.3896551724137931,
+                0.3896551724137931,
+                0.346551724137931
+            ],
+            [
+                0.4,
+                0.4,
+                0.35
+            ]
+        ],
+        "angles": [
+            [
+                0.0,
+                0.0,
+                0.0
+            ],
+            [
+                0.0,
+                0.0,
+                12.0
+            ],
+            [
+                0.0,
+                0.0,
+                24.0
+            ],
+            [
+                0.0,
+                0.0,
+                36.0
+            ],
+            [
+                0.0,
+                0.0,
+                48.0
+            ],
+            [
+                0.0,
+                0.0,
+                60.0
+            ],
+            [
+                0.0,
+                0.0,
+                72.0
+            ],
+            [
+                0.0,
+                0.0,
+                84.0
+            ],
+            [
+                0.0,
+                0.0,
+                96.0
+            ],
+            [
+                0.0,
+                0.0,
+                108.0
+            ],
+            [
+                0.0,
+                0.0,
+                120.0
+            ],
+            [
+                0.0,
+                0.0,
+                132.0
+            ],
+            [
+                0.0,
+                0.0,
+                144.0
+            ],
+            [
+                0.0,
+                0.0,
+                156.0
+            ],
+            [
+                0.0,
+                0.0,
+                168.0
+            ],
+            [
+                0.0,
+                0.0,
+                180.0
+            ],
+            [
+                0.0,
+                0.0,
+                192.0
+            ],
+            [
+                0.0,
+                0.0,
+                204.0
+            ],
+            [
+                0.0,
+                0.0,
+                216.0
+            ],
+            [
+                0.0,
+                0.0,
+                228.0
+            ],
+            [
+                0.0,
+                0.0,
+                240.0
+            ],
+            [
+                0.0,
+                0.0,
+                252.0
+            ],
+            [
+                0.0,
+                0.0,
+                264.0
+            ],
+            [
+                0.0,
+                0.0,
+                276.0
+            ],
+            [
+                0.0,
+                0.0,
+                288.0
+            ],
+            [
+                0.0,
+                0.0,
+                300.0
+            ],
+            [
+                0.0,
+                0.0,
+                312.0
+            ],
+            [
+                0.0,
+                0.0,
+                324.0
+            ],
+            [
+                0.0,
+                0.0,
+                336.0
+            ],
+            [
+                0.0,
+                0.0,
+                348.0
+            ]
+        ],
+        "Is_loop": False,
+        "Rotation": [
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ],
+            [
+                [
+                    1.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0
+                ]
+            ]
+        ]
+    }
+
+    Frame = Frame_Path(STRAIGHT_LINE_PATH["points"], STRAIGHT_LINE_PATH["Rotation"], STRAIGHT_LINE_PATH["Is_loop"], 4)  
+
+elif (PATH_INDEX == 5):
+    N = 31
+    Point_List = [[0.1 + 0.3 * i / N, 0.1 + 0.3 * i / N, 0.25 + 0.1 * (i / N)] for i in range(N)]
+    # Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h] for i in range(N)]
+
+    Rotation_List = []
+    ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3)
+
+    # while (np.abs(ry) < 1.5 and np.abs(rp) < 1.5 and np.abs(rr) < 1.5):
+    #     ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3)
+
+    for i in range (N):
+        yaw   =  0 # ry # ry*np.sin(2*np.pi * i / N)# ry * np.sin(2*np.pi * i / N) # 2 * np.pi * i / N # ry*np.sin(2*np.pi * i / N)
+        pitch = 0 # rp # rp*np.sin(2*np.pi * i / N) # rp*np.sin(2*np.pi * i / N) # 2 * np.pi * i / N  + np.pi/2 # rp*np.sin(2*np.pi * i / N)
+        roll  =  0 # rr # rr*np.sin(2*np.pi * i / N) # rr*np.sin(2*np.pi * i / N) # 2 * np.pi * i / N  # 2 * np.pi * i / N  + np.pi/3 # rr*np.sin(2*np.pi * i / N)
+
+        cy, sy = np.cos(yaw),   np.sin(yaw)
+        cp, sp_sin = np.cos(pitch), np.sin(pitch)  # avoid name clash
+        cr, sr = np.cos(roll),  np.sin(roll)
+
+        Rotation_List.append(np.array([
+            [cy*cp,  cy*sp_sin*sr - sy*cr,  cy*sp_sin*cr + sy*sr],
+            [sy*cp,  sy*sp_sin*sr + cy*cr,  sy*sp_sin*cr - cy*sr],
+            [-sp_sin,             cp*sr,             cp*cr       ]
+        ]))
+
+    # Dense_points = np.array(Point_List)
+    # Dense_rotations = np.array(Rotation_List)
+    # stride = max(1, N // 30)
+    # Point_List = Dense_points[::stride]
+    # Rotation_List = Dense_rotations[::stride]
+
+    # if not np.allclose(Point_List[-1], Dense_points[-1]):
+    #     Point_List = np.vstack([Point_List, Dense_points[-1]])
+    #     Rotation_List = np.concatenate([Rotation_List, Dense_rotations[-1:]], axis=0)
+
+    Frame = Frame_Path(Point_List, Rotation_List, False, 4)
+
+elif (PATH_INDEX == 6):
+    rng = np.random.default_rng(12345)
+    M = 60
+    base_point = np.array([0.25, 0.15, 0.2])
+
+    ctrl_count = 8
+    ctrl_s = np.linspace(0.0, 1.0, ctrl_count)
+    ctrl_offsets = rng.normal(scale=0.05, size=(ctrl_count, 3))
+    ctrl_offsets[0] = 0.0
+    ctrl_points = base_point + np.cumsum(ctrl_offsets, axis=0)
+
+    s_samples = np.linspace(0.0, 1.0, M)
+    Point_List = make_interp_spline(ctrl_s, ctrl_points, k=3)(s_samples)
+
+    angle_ctrl = rng.normal(scale=0.4, size=(ctrl_count, 3))
+    angle_ctrl[0] = 0.0
+    smoothed_angles = make_interp_spline(ctrl_s, angle_ctrl, k=3)(s_samples)
+    Rotation_List = R.from_euler("zyx", smoothed_angles).as_matrix()
+
+    Frame = Frame_Path(Point_List, Rotation_List, False, 4)
 
 # Tracking Signal
+print("Total path length:", Frame.total_length)
 
 def Reference_signal(Frame, time):
-    # return 0.1, 0, 0
+    # return 0.3, 0, 0
     if (Frame.Is_loop):
         # return 0.5 * np.sin(time * 2 * np.pi / 5) + 0.5, 0.5 * np.cos(time * 2 * np.pi / 5) * 2 * np.pi / 5, 0.5 * -np.sin(time * 2 * np.pi / 5)* 2 * np.pi /5 * 2 * np.pi / 5
     
         return (Frame.total_length / 5.0 * time) % (Frame.total_length), Frame.total_length / 5.0, 0
+    
+    elif (1):
+        if (time < 5):
+            Position = 0
+            Velocity = 0
+        
+        elif (time < 15):
+            Temp_velocity = Frame.total_length / 10
+            Temp_position = Temp_velocity * (time - 5)
+
+            Position = Temp_position
+            Velocity = Temp_velocity
+
+        elif (time < 20):
+            Position = Frame.total_length
+            Velocity = 0
+
+        elif (time < 30):
+            Temp_velocity = - Frame.total_length / 10
+            Temp_position = Frame.total_length + Temp_velocity * (time - 20)
+
+            Position = Temp_position
+            Velocity = Temp_velocity
+
+        else:
+            Position = 0
+            Velocity = 0
+
+        return Position, Velocity, 0
     else:
         Temp_velocity = Frame.total_length / 10
-        Temp_position = Temp_velocity * (time - 10)
+        Temp_position = Temp_velocity * (time)
 
-        if (Temp_position >= 0 and Temp_position < Frame.total_length * 0.9999):
+        if (Temp_position >= 0 and Temp_position < Frame.total_length):
             Position = Temp_position
             Velocity = Temp_velocity
 
@@ -74,7 +1078,7 @@ def Reference_signal(Frame, time):
             Velocity = 0
 
         else:
-            Position = Frame.total_length * 0.9999
+            Position = Frame.total_length  
             Velocity = 0
 
         return Position, Velocity, 0
@@ -113,11 +1117,11 @@ END_EFFECTOR_TRANSFORMATION=np.eye(4)
 
 KukaIiwa14 = Robot(NUMBER_OF_JOINT, ALPHA, A, D, OFFSET, MASS, COM, INERTIA, FV, FS, GRAVITY, End_effector_transformation= END_EFFECTOR_TRANSFORMATION, convention="MDH", joint_types=["R"]*7)
 
-KukaIiwa14_Control_Module =Virtal_Task_Space_Control_Module(Kp = 500, Kd = 50, K1 = 250, K2 = 200)
+KukaIiwa14_Control_Module =Virtal_Task_Space_Control_Module(Kp = 60, Kd = 50, K1 = 250, K2 = 200)
 
 # Simulation parameters
 dt = 0.005
-T_total = 20
+T_total = 40
 
 steps = int(T_total / dt)
 
@@ -133,10 +1137,12 @@ eta_1_log = []
 xi_1_log = []
 xi_3_log = []
 reference_signal_log = []
+reference_velocity_log = []
 x_des_log = []
 lambda_log = []
 J_hat_determinent_log = []
-J_determinent_log = []
+E_determinent_log = []
+beta_log = []
 
 quat_log = []
 quat_des_log = []
@@ -150,12 +1156,15 @@ er_log = []
 trace_log = []
 
 u_log = []
+v_log = []
 
 J_H_log = []
 
+beta_log = []
+
 
 # Initial condition
-q = np.random.uniform(0.1, 0.1, size=7)
+q = np.random.uniform(-np.pi, np.pi, size=7)
 qd = np.array([0, 0, 0, 0, 0, 0, 0], dtype=float)
 qdd = np.array([0, 0, 0, 0, 0, 0, 0], dtype=float)
 
@@ -164,9 +1173,10 @@ for step in tqdm(range(steps), desc="Simulating", unit="step"):
     time = step * dt
     Current_reference_signal = Reference_signal(Frame, time)
     reference_signal_pos = Current_reference_signal[0]
-
+    reference_signal_velocity = Current_reference_signal[1]
     
-    v, Virtal_Task_Space_variable = KukaIiwa14_Control_Module.Get_Control_Input(KukaIiwa14, Frame, q, qd, qdd, Current_reference_signal)
+    v, Virtal_Task_Space_variable = KukaIiwa14_Control_Module.Get_Control_Input(KukaIiwa14, Frame, q, qd, qdd, Current_reference_signal, True, 10)
+    v_log.append(v.copy())
 
     v_7dof = np.zeros((7))    
     h_7dof = np.zeros((7))
@@ -226,12 +1236,14 @@ for step in tqdm(range(steps), desc="Simulating", unit="step"):
     xi_1_log.append(float(xi_1))
     xi_3_log.append(float(xi_3))
     reference_signal_log.append(float(reference_signal_pos))
+    reference_velocity_log.append(float(reference_signal_velocity))
     x_des_log.append(y_star.flatten())
+    beta_log.append(float(Virtal_Task_Space_variable["beta"]))
     # lambda_log.append(lambda_star)
 
     J_hat_determinent_log.append(np.linalg.det(J_H_7dof))
     # J_determinent_log.append(np.linalg.matrix_rank(J))
-    J_determinent_log.append(np.linalg.det(E))
+    E_determinent_log.append(np.linalg.det(E))
 
 
     quat_log.append(R.from_matrix(R_cur).as_quat())
@@ -262,6 +1274,7 @@ quat_log = np.array(quat_log)
 quat_des_log = np.array(quat_des_log)
 Rotation_error_log = np.array(Rotation_error_log)
 u_log = np.array(u_log)
+v_log = np.array(v_log)
 
 J_H_log = np.array(J_H_log)
 J_H_columns = [f"J_H_{row}_{col}" for row in range(J_H_log.shape[1]) for col in range(J_H_log.shape[2])]
@@ -359,6 +1372,26 @@ plt.tight_layout()
 savefig(f"{PREFIX_NAME}Eta_Xi")
 
 plt.figure()
+plt.plot(time_log, reference_signal_log, color='black', label='Reference signal')
+plt.title("Reference Signal Over Time")
+plt.xlabel("Time [s]")
+plt.ylabel("Reference Value")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+savefig(f"{PREFIX_NAME}reference_signal")
+
+plt.figure()
+plt.plot(time_log, reference_velocity_log, color='black', linestyle='--', label='Reference velocity')
+plt.title("Reference Velocity Over Time")
+plt.xlabel("Time [s]")
+plt.ylabel("Reference Velocity")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+savefig(f"{PREFIX_NAME}reference_velocity")
+
+plt.figure()
 plt.plot(time_log, J_hat_determinent_log)
 
 plt.title("J_hat det")
@@ -370,15 +1403,25 @@ plt.tight_layout()
 savefig(f"{PREFIX_NAME}J_hat_det")
 
 plt.figure()
-plt.plot(time_log, J_determinent_log)
+plt.plot(time_log, E_determinent_log)
 
-plt.title("J det")
+plt.title("E det")
 plt.xlabel("Time [s]")
 plt.ylabel("Value")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
 savefig(f"{PREFIX_NAME}J_det")
+
+plt.figure()
+plt.plot(time_log, beta_log, color='blue', label='beta')
+plt.title("Beta Over Time")
+plt.xlabel("Time [s]")
+plt.ylabel("Beta")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+savefig(f"{PREFIX_NAME}beta")
 
 plt.figure()
 for i, lbl, col in zip(range(4), ['qx','qy','qz','qw'],
@@ -446,6 +1489,18 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 savefig(f"{PREFIX_NAME}trace")
+
+plt.figure()
+for i in range(v_log.shape[1]):
+    plt.plot(time_log, v_log[:, i], label=f"$v_{i + 1}$")
+
+plt.title("v")
+plt.xlabel("Time [s]")
+plt.ylabel("v")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+savefig(f"{PREFIX_NAME}v")
 
 plt.figure()
 for i in range(u_log.shape[1]):

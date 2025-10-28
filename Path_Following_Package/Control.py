@@ -9,7 +9,7 @@ class Virtal_Task_Space_Control_Module:
         self.K1 = K1
         self.K2 = K2
 
-    def Get_Control_Input(self, Robot, Frame, q, qd, qdd, Reference_signal):
+    def Get_Control_Input(self, Robot, Frame, q, qd, qdd, Reference_signal, Use_previous_s_star = True, Number_of_seeds_for_s_star = 10):
         reference_signal_pos, reference_signal_velocity, reference_signal_acceleration = Reference_signal
 
         number_of_joints = q.shape[0]
@@ -23,8 +23,10 @@ class Virtal_Task_Space_Control_Module:
         y_ddot = (Robot.jacobian_dot(q, qd)[:3] @ qd + \
                 Robot.jacobian(q)[:3] @ qdd).reshape((3, 1))
 
-        s_star, _ = Frame.find_s_star(y.T, last_s = self.last_s_star)
-        self.last_s_star = s_star
+        s_star, _ = Frame.find_s_star(y.T, last_s = self.last_s_star, n_init=Number_of_seeds_for_s_star)
+
+        if (Use_previous_s_star):
+            self.last_s_star = s_star
 
         y_star = Frame.P(s_star).reshape((3, 1))
         y_star_d = Frame._dP_ds(s_star, 1).reshape((3, 1))
@@ -38,6 +40,9 @@ class Virtal_Task_Space_Control_Module:
         epsilon = 1e-8
         beta_raw = 1 - ((y - y_star).T @ y_star_dd) / (np.linalg.norm(y_star_d) ** 2)
         beta = 1.0 / np.clip(beta_raw, epsilon, None)
+        # beta = 1.0 / beta_raw
+
+        # print((y - y_star),"\n", y_star_dd, "\n", np.linalg.norm(y_star_d) ** 2, beta_raw, beta)
 
         s_star_d = (beta @ T.T / np.linalg.norm(y_star_d)) @ y_dot
 

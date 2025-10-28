@@ -14,8 +14,8 @@ class Path_Generation_Tool:
         self.Is_loop    = bool(Is_loop)
 
         if (not self.Is_loop and n_continuity % 2):
-            print("[Info] Adjusted n_continuity to be even for open spline to ensure generated correct gradient at endpoints.")
             n_continuity += 1
+            print(f"[Info] Adjusted n_continuity to be even ({n_continuity}) from ({n_continuity - 1}) for open spline to ensure generated correct gradient at endpoints.")
 
         self.n_continuity = n_continuity
         self.spline_degree = n_continuity + 1
@@ -26,6 +26,8 @@ class Path_Generation_Tool:
 
         self.positional_spine = None
         self.rotaional_spine = None
+
+        self.total_length = 1.0
 
         self.Generate_Path()
 
@@ -45,9 +47,8 @@ class Path_Generation_Tool:
             raise ValueError(f"open spline: need ≥ k+1={k+1} points")
         return make_interp_spline(x, y, k=k, bc_type=self._auto_bc(k))
 
-    def _make_quat_spline(self, lam_key, quat_key, k_wanted=4):
+    def _make_quat_spline(self, lam_key, quat_key, k):  
         n = len(lam_key)
-        k = min(k_wanted, n - 1)      
         quat_key = quat_key.copy().astype(float)
 
         for i in range(1, n):
@@ -75,7 +76,8 @@ class Path_Generation_Tool:
                 for j in range(4)]
 
     def _Lambda_wrap(self, Lambda):         
-        return np.mod(Lambda, 1.0) if self.Is_loop else np.clip(Lambda, 0.0, 1.0)
+        # return np.mod(Lambda, 1.0) if self.Is_loop else np.clip(Lambda, 0.0, 1.0)
+        return np.mod(Lambda, 1.0) if self.Is_loop else Lambda
     
     def P(self, Lambda):    
         Wrapped_Lambda = self._Lambda_wrap(Lambda)
@@ -127,32 +129,31 @@ class Path_Generation_Tool:
                 quat_key[i] = -quat_key[i]
         self.quat_key = quat_key
         
-        self._make_quat_spline(Lambda_vals, self.quat_key)
+        self._make_quat_spline(Lambda_vals, self.quat_key, self.spline_degree)
 
         if (self.print_equation):
             print(f"\n--- Symbolic position splines (C^{self.n_continuity}) ---")
-            # for name, spl in zip("xyz", (self.spline_x, self.spline_y, self.spline_z)):
             for name, spl in zip("xyz", [i for i in self.positional_spine]):
                 print(f"\n{name}(Lambda) = "); sp.pretty_print(self.Print_spine(spl))
             for name, spl in zip("abcd", [i for i in self.rotaional_spine]):
                 print(f"\n{name}(Lambda) = "); sp.pretty_print(self.Print_spine(spl))
 
-    def Visualize_Path(self, L = 1.0, num_of_roation_plots = 10):
-        Lambda_samp = np.linspace(0.0, 1.0, 400, endpoint= self.Is_loop)
-        pos_s  = self.P(Lambda_samp)
-        rot_s  = self.R(Lambda_samp)
+    def Visualize_path(self, L = 1.0, num_of_roation_plots = 10, Show_plots = True):
+        Input_sample = np.linspace(0.0 - 10, self.total_length - 10, 400, endpoint= self.Is_loop)
+        pos_s  = self.P(Input_sample)
+        rot_s  = self.R(Input_sample)
         fig = plt.figure()
         ax  = fig.add_subplot(111, projection="3d")
         ax.plot(*pos_s.T, lw=1.8,
                 label=rf"$C^{self.n_continuity}$ {'loop' if self.Is_loop else 'open'}")
         ax.scatter(*self.points.T, c="r", s=4)
-        for i in np.linspace(0, len(Lambda_samp) - 1, num_of_roation_plots, dtype=int):
+        for i in np.linspace(0, len(Input_sample) - 1, num_of_roation_plots, dtype=int):
             o, Rm = pos_s[i], rot_s[i].as_matrix()
             ax.quiver(o[0], o[1], o[2], *(Rm[:, 0]), color="r", length=L, normalize=True)
             ax.quiver(o[0], o[1], o[2], *(Rm[:, 1]), color="g", length=L, normalize=True)
             ax.quiver(o[0], o[1], o[2], *(Rm[:, 2]), color="b", length=L, normalize=True)
         ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_zlabel("z")
-        ax.set_title("Position + orientation (C³ loop)")
+        ax.set_title("Position and orientation along generated path")
         getattr(ax, "set_box_aspect", lambda *_: None)([1, 1, 1])
 
         # Quaternion plots
@@ -161,12 +162,12 @@ class Path_Generation_Tool:
 
         quat_labels = [r"$q_w(\lambda)$", r"$q_x(\lambda)$", r"$q_y(\lambda)$", r"$q_z(\lambda)$"]
         qw_k, qx_k, qy_k, qz_k = self.quat_key.T
-        q_spline = np.column_stack([s(Lambda_samp) for s in self.rotaional_spine])
+        q_spline = np.column_stack([s(Lambda_vals) for s in self.rotaional_spine])
         q_spline /= np.linalg.norm(q_spline, axis=1, keepdims=True)  # Normalize
 
         for comp, ax_ in zip(range(4), axs):
             ax_.plot(Lambda_vals, (qw_k, qx_k, qy_k, qz_k)[comp], "o", label="Way-points")
-            ax_.plot(Lambda_samp, q_spline[:, comp], "-", label="C³ spline")
+            ax_.plot(Lambda_vals, q_spline[:, comp], "-", label="C³ spline")
             ax_.set_ylabel(quat_labels[comp])
             ax_.grid(True); ax_.legend()
 
@@ -177,19 +178,35 @@ class Path_Generation_Tool:
         fig3, axs3 = plt.subplots(3, 1, figsize=(10, 6), sharex=True)
 
         xyz_labels = [r"$x(\lambda)$", r"$y(\lambda)$", r"$z(\lambda)$"]
-        x, y, z = pos_s.T
         x_key, y_key, z_key = self.points.T  # waypoints
+        pos_spline = np.column_stack([p(Lambda_vals) for p in self.positional_spine])
 
-        for comp, key_pts, ax_ in zip([x, y, z], [x_key, y_key, z_key], axs3):
-            ax_.plot(Lambda_vals, key_pts, "o", label="Way-points")
-            ax_.plot(Lambda_samp, comp, "-", label="C³ spline")
-            ax_.grid(True)
-            ax_.legend()
-
-        for label, ax_ in zip(xyz_labels, axs3):
-            ax_.set_ylabel(label)
+        for comp, ax_ in zip(range(3), axs3):
+            ax_.plot(Lambda_vals, (x_key, y_key, z_key)[comp], "o", label="Way-points")
+            ax_.plot(Lambda_vals, pos_spline[:, comp], "-", label="C³ spline")
+            ax_.set_ylabel(xyz_labels[comp])
+            ax_.grid(True); ax_.legend()
 
         axs3[-1].set_xlabel(r"Lambda  (curve parameter)")
         fig3.suptitle("Position Components (C³ continuous)")
         plt.tight_layout()
-        plt.show()
+
+        # xyz_labels = [r"$x(\lambda)$", r"$y(\lambda)$", r"$z(\lambda)$"]
+        # x, y, z = pos_s.T
+        # x_key, y_key, z_key = self.points.T  # waypoints
+
+        # for comp, key_pts, ax_ in zip([x, y, z], [x_key, y_key, z_key], axs3):
+        #     ax_.plot(Lambda_vals, key_pts, "o", label="Way-points")
+        #     ax_.plot(Input_sample, comp, "-", label="C³ spline")
+        #     ax_.grid(True)
+        #     ax_.legend()
+
+        # for label, ax_ in zip(xyz_labels, axs3):
+        #     ax_.set_ylabel(label)
+
+        # axs3[-1].set_xlabel(r"Lambda  (curve parameter)")
+        # fig3.suptitle("Position Components (C³ continuous)")
+        # plt.tight_layout()
+
+        if (Show_plots):
+            plt.show()
