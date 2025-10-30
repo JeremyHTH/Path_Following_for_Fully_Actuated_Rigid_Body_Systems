@@ -15,7 +15,7 @@ from Path_Following_Package import *
 from scipy.interpolate import make_interp_spline
 
 SAVE_DIR = "Demo_Image"
-PREFIX_NAME = "Last_run_"
+PREFIX_NAME = "Mix_Path_"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 def savefig(name):
@@ -23,84 +23,61 @@ def savefig(name):
 
 # Path generation
 N = 5000
-Current_Path = "Linear"  # "Circular", "Linear", "Random_smooth"
 
-# Circular path
-if (Current_Path == "Circular"):
-    PREFIX_NAME = "Circular_Path_"
-    r = 0.5
-    h = 0.3
 
-    Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h] for i in range(N)]
+r = 0.5
+h = 0.3
 
-    Rotation_List = []
-    ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) 
+Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h] for i in range(N)]
 
-    for i in range (N):
-        yaw   =  2 * np.pi * i / N + np.pi/ 3 
-        pitch = rp 
-        roll  =  rr 
+Rotation_List = []
+ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) 
 
-        cy, sy = np.cos(yaw),   np.sin(yaw)
-        cp, sp_sin = np.cos(pitch), np.sin(pitch)  # avoid name clash
-        cr, sr = np.cos(roll),  np.sin(roll)
+for i in range (N):
+    yaw   =  2 * np.pi * i / N + np.pi/ 3 
+    pitch = rp 
+    roll  =  rr 
 
-        Rotation_List.append(np.array([
-            [cy*cp,  cy*sp_sin*sr - sy*cr,  cy*sp_sin*cr + sy*sr],
-            [sy*cp,  sy*sp_sin*sr + cy*cr,  sy*sp_sin*cr - cy*sr],
-            [-sp_sin,             cp*sr,             cp*cr       ]
-        ]))
+    cy, sy = np.cos(yaw),   np.sin(yaw)
+    cp, sp_sin = np.cos(pitch), np.sin(pitch)  # avoid name clash
+    cr, sr = np.cos(roll),  np.sin(roll)
 
-    Frame = Frame_Path(Point_List, Rotation_List, True, 4)
+    Rotation_List.append(np.array([
+        [cy*cp,  cy*sp_sin*sr - sy*cr,  cy*sp_sin*cr + sy*sr],
+        [sy*cp,  sy*sp_sin*sr + cy*cr,  sy*sp_sin*cr - cy*sr],
+        [-sp_sin,             cp*sr,             cp*cr       ]
+    ]))
 
-elif (Current_Path ==  "Linear"):
-    PREFIX_NAME = "Linear_Path_"
-    N = 31
-    Point_List = [[0.1 + 0.3 * i / N, 0.1 + 0.3 * i / N, 0.25 + 0.1 * (i / N)] for i in range(N)]
+Frame_1 = Frame_Path(Point_List, Rotation_List, True, 4)
+print("Total path length (Frame 1):", Frame_1.total_length)
 
-    Rotation_List = []
-    ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) 
+r = 0.3
+h = 0.5
 
-    for i in range (N):
-        yaw   =  0 
-        pitch = 0 
-        roll  =  0 
+Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(4 * np.pi  / N * i), h + 0.1 * np.cos(2 * np.pi / N * i)] for i in range(N)]
 
-        cy, sy = np.cos(yaw),   np.sin(yaw)
-        cp, sp_sin = np.cos(pitch), np.sin(pitch)  
-        cr, sr = np.cos(roll),  np.sin(roll)
+Rotation_List = []
+ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) 
 
-        Rotation_List.append(np.array([
-            [cy*cp,  cy*sp_sin*sr - sy*cr,  cy*sp_sin*cr + sy*sr],
-            [sy*cp,  sy*sp_sin*sr + cy*cr,  sy*sp_sin*cr - cy*sr],
-            [-sp_sin,             cp*sr,             cp*cr       ]
-        ]))
+for i in range (N):
+    yaw   =  2 * np.pi * i / N + np.pi/ 3 
+    pitch = rp 
+    roll  =  rr 
 
-    Frame = Frame_Path(Point_List, Rotation_List, False, 4)
+    cy, sy = np.cos(yaw),   np.sin(yaw)
+    cp, sp_sin = np.cos(pitch), np.sin(pitch)  # avoid name clash
+    cr, sr = np.cos(roll),  np.sin(roll)
 
-elif (Current_Path == "Random_smooth"):
-    PREFIX_NAME = "Random_Smooth_Path_"
-    rng = np.random.default_rng(12345)
-    M = 60
-    base_point = np.array([0.25, 0.15, 0.2])
+    Rotation_List.append(np.array([
+        [cy*cp,  cy*sp_sin*sr - sy*cr,  cy*sp_sin*cr + sy*sr],
+        [sy*cp,  sy*sp_sin*sr + cy*cr,  sy*sp_sin*cr - cy*sr],
+        [-sp_sin,             cp*sr,             cp*cr       ]
+    ]))
 
-    ctrl_count = 8
-    ctrl_s = np.linspace(0.0, 1.0, ctrl_count)
-    ctrl_offsets = rng.normal(scale=0.05, size=(ctrl_count, 3))
-    ctrl_offsets[0] = 0.0
-    ctrl_points = base_point + np.cumsum(ctrl_offsets, axis=0)
+Frame_2 = Frame_Path(Point_List, Rotation_List, True, 4)
 
-    s_samples = np.linspace(0.0, 1.0, M)
-    Point_List = make_interp_spline(ctrl_s, ctrl_points, k=3)(s_samples)
 
-    angle_ctrl = rng.normal(scale=0.4, size=(ctrl_count, 3))
-    angle_ctrl[0] = 0.0
-    smoothed_angles = make_interp_spline(ctrl_s, angle_ctrl, k=3)(s_samples)
-    Rotation_List = R.from_euler("zyx", smoothed_angles).as_matrix()
-
-    Frame = Frame_Path(Point_List, Rotation_List, False, 4)
-
-print("Total path length:", Frame.total_length)
+print("Total path length (Frame 2):", Frame_2.total_length)
 
 def Reference_signal(Frame, time):
     if (Frame.Is_loop):
@@ -220,8 +197,17 @@ q = np.random.uniform(-np.pi, np.pi, size=7)
 qd = np.array([0, 0, 0, 0, 0, 0, 0], dtype=float)
 qdd = np.array([0, 0, 0, 0, 0, 0, 0], dtype=float)
 
+Already_reset_s_star = False
 
 for step in tqdm(range(steps), desc="Simulating", unit="step"):
+    if (step * dt < T_total / 2):
+        Frame = Frame_1
+    else:
+        Frame = Frame_2
+
+        if (not Already_reset_s_star):
+            KukaIiwa14_Control_Module.reset_s_star()
+
     time = step * dt
     Current_reference_signal = Reference_signal(Frame, time)
     reference_signal_pos = Current_reference_signal[0]
@@ -367,9 +353,14 @@ ax.plot(
     label="Path"
 )
 
-s_sample = np.linspace(0, Frame.total_length, 400, endpoint = True)
-p_sample = Frame.P(s_sample)    
-ax.plot(*p_sample.T, lw=1.5, linestyle= "--", color = "black", label="Reference path")
+s_sample = np.linspace(0, Frame_1.total_length, 400, endpoint = True)
+p_sample = Frame_1.P(s_sample)    
+ax.plot(*p_sample.T, lw=1.5, linestyle= "--", color = "black", label="Reference path 1")
+
+
+s_sample = np.linspace(0, Frame_2.total_length, 400, endpoint = True)
+p_sample = Frame_2.P(s_sample)    
+ax.plot(*p_sample.T, lw=1.5, linestyle= "--", color = "grey", label="Reference path 2")
 ax.legend()
 
 

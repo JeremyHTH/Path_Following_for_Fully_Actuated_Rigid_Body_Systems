@@ -2,14 +2,69 @@ import numpy as np
 from Path_Following_Package.util import Angular_error, log_SO3, hat
 
 class Virtal_Task_Space_Control_Module:
-    def __init__(self, last_s_star = None, Kp = 100.0, Kd = 20.0, K1 = 25.0, K2 = 20.0):
+    def __init__(self, last_s_star = None, Kp_eta = 50.0, Kd_eta = 60.0, Kp_xi = 100.0, Kd_xi = 20.0, Kp_rot = 25.0, Kd_rot = 20.0):
+        """
+        Configure the virtual task-space controller with initial state and gains.
+
+        Parameters
+        ----------
+        last_s_star : float or None
+            Initial guess for the closest arc-length on the path (used as warm start).
+        Kp_eta : float
+            Proportional gain regulating tangential progress errors (η terms).
+        Kd_eta : float
+            Damping gain for tangential velocity errors.
+        Kp_xi : float
+            Proportional gain for lateral deviation errors (ξ terms).
+        Kd_xi : float
+            Damping gain for lateral velocity errors.
+        Kp_rot : float
+            Gain acting on the orientation error vector.
+        Kd_rot : float
+            Gain acting on the angular velocity error.
+
+        Returns
+        -------
+        None
+        """
         self.last_s_star = last_s_star
-        self.Kp = Kp
-        self.Kd = Kd
-        self.K1 = K1
-        self.K2 = K2
+        self.Kp_eta = Kp_eta
+        self.Kd_eta = Kd_eta
+        self.Kp_xi = Kp_xi
+        self.Kd_xi = Kd_xi
+        self.Kp_rot = Kp_rot
+        self.Kd_rot = Kd_rot
 
     def Get_Control_Input(self, Robot, Frame, q, qd, qdd, Reference_signal, Use_previous_s_star = True, Number_of_seeds_for_s_star = 10):
+        """
+        Compute joint-space control inputs that drive the robot along the reference path.
+
+        Parameters
+        ----------
+        Robot : Robot
+            Robot model providing kinematics and dynamics information.
+        Frame : Frame_Path
+            Path frame object used to evaluate closest points and Frenet frames.
+        q : ndarray
+            Current joint positions (rad or m depending on joint type).
+        qd : ndarray
+            Current joint velocities.
+        qdd : ndarray
+            Current joint accelerations (feed-forward term).
+        Reference_signal : tuple
+            Desired arc-length position, velocity, and acceleration along the path.
+        Use_previous_s_star : bool, optional
+            Whether to store the latest s* as the next warm-start seed.
+        Number_of_seeds_for_s_star : int, optional
+            Number of initial guesses used when searching for the closest point.
+
+        Returns
+        -------
+        tuple
+            A pair `(v, Task_space_variable)` where `v` is the 6D task-space
+            control effort and `Task_space_variable` bundles intermediate
+            diagnostics for logging or analysis.
+        """
         reference_signal_pos, reference_signal_velocity, reference_signal_acceleration = Reference_signal
 
         number_of_joints = q.shape[0]
@@ -23,6 +78,7 @@ class Virtal_Task_Space_Control_Module:
         y_ddot = (Robot.jacobian_dot(q, qd)[:3] @ qd + \
                 Robot.jacobian(q)[:3] @ qdd).reshape((3, 1))
 
+        # Search the path for the closest point to the current end-effector pose.
         s_star, _ = Frame.find_s_star(y.T, last_s = self.last_s_star, n_init=Number_of_seeds_for_s_star)
 
         if (Use_previous_s_star):
@@ -38,6 +94,7 @@ class Virtal_Task_Space_Control_Module:
         M2 = M2.reshape((3, 1))
 
         epsilon = 1e-8
+        # beta rescales the tangential velocity to compensate for curvature-induced drift.
         beta_raw = 1 - ((y - y_star).T @ y_star_dd) / (np.linalg.norm(y_star_d) ** 2)
         beta = 1.0 / np.clip(beta_raw, epsilon, None)
         # beta = 1.0 / beta_raw
@@ -61,6 +118,7 @@ class Virtal_Task_Space_Control_Module:
                     (np.linalg.norm(y_star_d)**2))
         
         delta_s = 1e-4 * Frame.total_length    
+        # Use a five-point stencil to approximate third derivatives required in betȧ.
         P_m2 = Frame.P(s_star - 2*delta_s).reshape((3,1))
         P_m1 = Frame.P(s_star - 1*delta_s).reshape((3,1))
         P_p1 = Frame.P(s_star + 1*delta_s).reshape((3,1))
@@ -110,7 +168,6 @@ class Virtal_Task_Space_Control_Module:
                         M2_dot.T                           ])
 
         Jw     = Robot.jacobian(q)[3:, :]
-        Jw_dot = Robot.jacobian_dot(q, qd)[3:, :]  
 
         R_des  = Frame.R(reference_signal_pos).as_matrix().reshape((3, 3)) 
         R_cur  = T_cur[:3, :3]                                
@@ -119,6 +176,7 @@ class Virtal_Task_Space_Control_Module:
         e_rot  = log_SO3(R_err)  
 
         ds       = 1e-5
+        # Finite difference the path orientation to obtain desired angular rates.
         R_p      = Frame.R(reference_signal_pos + ds).as_matrix().reshape((3, 3))
         R_m      = Frame.R(reference_signal_pos - ds).as_matrix().reshape((3, 3))
         R_des_d  = (R_p - R_m) / (2.0 * ds) * float(reference_signal_velocity)     
@@ -150,11 +208,12 @@ class Virtal_Task_Space_Control_Module:
 
         f_dot = Omega - (R_t_Rd @ omega_des)
 
+        # The feed-forward body torque u_hat reproduces the geometric controller from the paper.
         term1 = R_t_Rd @ Omega_d_dot_hat @ Rd_t_R
         term2 = (R_t_Rd @ Omega_d_hat - Omega_hat @ R_t_Rd) @ Omega_d_hat @ Rd_t_R
         term3 = R_t_Rd @ Omega_d_hat @ (R_t_Rd @ Omega_hat - Omega_d_hat @ R_t_Rd)
         u_hat = term1 + term2 + term3 \
-                - hat(self.K1 * e_rot) - hat(self.K2 * f_dot)
+                - hat(self.Kp_rot * e_rot) - hat(self.Kd_rot * f_dot)
 
         v_w_body = np.array([u_hat[2,1], u_hat[0,2], u_hat[1,0]])  
         v_w      = R_cur @ v_w_body                                
@@ -185,9 +244,9 @@ class Virtal_Task_Space_Control_Module:
 
         
         v = np.zeros((6))
-        v[0] = reference_signal_acceleration + 50 * (reference_signal_velocity - hd[0]) + 60 * Angular_error(h[0], reference_signal_pos, Frame)
-        v[1] = self.Kd * (-hd[1]) + self.Kp * (-h[1])
-        v[2] = self.Kd * (-hd[2]) + self.Kp * (-h[2])
+        v[0] = reference_signal_acceleration + self.Kd_eta * (reference_signal_velocity - hd[0]) + self.Kp_eta * Angular_error(h[0], reference_signal_pos, Frame)
+        v[1] = self.Kd_xi * (-hd[1]) + self.Kp_xi * (-h[1])
+        v[2] = self.Kd_xi * (-hd[2]) + self.Kp_xi * (-h[2])
         v[3:6] = v_w
 
 
@@ -212,3 +271,13 @@ class Virtal_Task_Space_Control_Module:
         }
 
         return v, Task_space_variable
+
+    def reset_s_star(self):
+        """
+        Clear the stored closest arc-length to force a fresh search next time.
+
+        Returns
+        -------
+        None
+        """
+        self.last_s_star = None

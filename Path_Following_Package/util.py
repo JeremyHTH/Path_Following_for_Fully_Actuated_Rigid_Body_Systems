@@ -1,6 +1,23 @@
 import numpy as np
 
 def Angular_error(theta, theta_des, Frame):
+    """
+    Compute a wrapped arc-length error tailored to open or closed paths.
+
+    Parameters
+    ----------
+    theta : float
+        Current arc-length (or phase) along the path.
+    theta_des : float
+        Desired arc-length value.
+    Frame : Frame_Path
+        Path object supplying loop information and total length.
+
+    Returns
+    -------
+    float
+        The signed error between desired and current progress along the path.
+    """
     if (Frame.Is_loop):
         Result = None
         error_1 = theta_des - theta
@@ -14,11 +31,37 @@ def Angular_error(theta, theta_des, Frame):
         return theta_des - theta
 
 def skew(v):
+    """
+    Convert a vector into its corresponding skew-symmetric matrix.
+
+    Parameters
+    ----------
+    v : array-like
+        Three-dimensional vector.
+
+    Returns
+    -------
+    ndarray
+        3x3 skew-symmetric matrix such that skew(v) @ x = v × x.
+    """
     return np.array([[ 0,   -v[2],  v[1]],
                      [ v[2], 0,   -v[0]],
                      [-v[1], v[0],  0]])
 
 def quat_multiply(q1, q2):
+    """
+    Multiply two quaternions using Hamiltonian convention.
+
+    Parameters
+    ----------
+    q1, q2 : array-like
+        Quaternions expressed as (x, y, z, w).
+
+    Returns
+    -------
+    ndarray
+        Quaternion representing q1 ⊗ q2.
+    """
     x1, y1, z1, w1 = q1
     x2, y2, z2, w2 = q2
     return np.array([
@@ -30,6 +73,19 @@ def quat_multiply(q1, q2):
 
 
 def log_SO3(R):
+    """
+    Map a rotation matrix to its Lie algebra element (logarithm map).
+
+    Parameters
+    ----------
+    R : ndarray
+        3x3 rotation matrix.
+
+    Returns
+    -------
+    ndarray
+        Rotation vector representing the logarithm of R.
+    """
     tr = np.trace(R)
     tr = np.clip(tr, -1.0, 3.0)  
     phi = np.arccos((tr - 1) / 2)
@@ -45,6 +101,19 @@ def log_SO3(R):
         return phi * v
 
 def hat(v):
+    """
+    Apply the hat operator to embed a vector in so(3).
+
+    Parameters
+    ----------
+    v : array-like
+        Three-dimensional vector.
+
+    Returns
+    -------
+    ndarray
+        3x3 skew-symmetric matrix (same as `skew` helper).
+    """
     return np.array([[    0, -v[2],  v[1]],
                     [ v[2],     0, -v[0]],
                     [-v[1],  v[0],    0]])

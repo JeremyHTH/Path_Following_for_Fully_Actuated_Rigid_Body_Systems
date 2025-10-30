@@ -19,7 +19,7 @@ N = 5000
 r = 0.5
 h = 0.3
 
-Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h ] for i in range(N)]
+Point_List = [[r * np.cos(2 * np.pi / N * i), r * np.sin(2 * np.pi  / N * i), h * np.sin(2 * np.pi / N * i) ] for i in range(N)]
 
 Rotation_List = []
 ry, rp, rr = np.random.uniform(-np.pi, np.pi, 3) # np.random.rand(3) 
